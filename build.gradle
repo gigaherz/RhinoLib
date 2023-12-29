@@ -1,0 +1,98 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+
+group = 'dev.gigaherz.rhinolib'
+version = '1.0-SNAPSHOT'
+
+base {
+    archivesName = "rhino-lib"
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'it.unimi.dsi:fastutil:8.5.12'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'org.apache.commons:commons-lang3:3.13.0'
+    implementation 'commons-io:commons-io:2.13.0'
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+    compileOnly 'org.jetbrains:annotations:24.0.1'
+
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    from('/') {
+        include 'LICENSE.txt'
+        include 'README.md'
+    }
+
+    manifest {
+        attributes([
+                "Specification-Title": "rhino",
+                "Specification-Vendor": "gigaherz",
+                "Specification-Version": "1", // We are version 1 of ourselves
+                "Implementation-Title": project.name,
+                "Implementation-Version": project.version,
+                "Implementation-Vendor" :"gigaherz",
+                "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                "FMLModType": "GAMELIBRARY"
+        ])
+    }
+}
+
+tasks.register('sourcesJar', Jar) {
+    dependsOn classes
+    from sourceSets.main.allSource
+    archiveClassifier = 'sources'
+
+    from('/') {
+        include 'LICENSE.txt'
+        include 'README.md'
+    }
+}
+
+artifacts {
+    archives sourcesJar
+}
+
+tasks.assemble.dependsOn sourcesJar
+
+publishing {
+    publications {
+        main(MavenPublication) {
+            artifactId 'rhino-lib'
+
+            artifact jar
+            artifact sourcesJar
+        }
+    }
+
+    repositories {
+        if (findProperty("RELEASE") && System.env.giga_maven_host != null) {
+            System.out.println("Remote publish enabled on " + System.env.giga_maven_host)
+            maven {
+                url System.env.giga_maven_host
+                credentials {
+                    username System.env.giga_maven_user
+                    password System.env.giga_maven_password
+                }
+            }
+        }
+        else {
+            System.out.println("Remote publish disabled.")
+            maven {
+                url "$buildDir/repo"
+            }
+        }
+    }
+}
